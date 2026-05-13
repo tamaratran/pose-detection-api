@@ -85,8 +85,13 @@ async def detect_pose(file: UploadFile = File(...)):
         # Convert PIL image to numpy array
         image_array = np.asarray(image)
 
-        # Create MediaPipe Image
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_array)
+        # Create MediaPipe Image using the correct format
+        try:
+            from mediapipe.framework.formats import image as image_lib
+            mp_image = image_lib.Image(image_format=image_lib.ImageFormat.SRGB, data=image_array)
+        except ImportError:
+            # Fallback: create Image object directly
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_array)
 
         # Detect pose
         detection_result = pose_landmarker.detect(mp_image)
