@@ -1,7 +1,8 @@
 import os
 import io
 import base64
-from fastapi import FastAPI, File, UploadFile
+import urllib.request
+from fastapi import FastAPI, File, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 import cv2
@@ -152,6 +153,62 @@ async def detect_pose_batch(files: list[UploadFile] = File(...)):
         result = await detect_pose(file)
         results.append(result)
     return results
+
+
+def detect_from_image_bytes(image_data: bytes):
+    """Run pose detection on raw image bytes. Returns MediaPipe-indexed landmarks dict or None."""
+    image = Image.open(io.BytesIO(image_data))
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+    image_array = np.asarray(image)
+
+    try:
+        from mediapipe.framework.formats import image as image_lib
+        mp_image = image_lib.Image(image_format=image_lib.ImageFormat.SRGB, data=image_array)
+    except ImportError:
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_array)
+
+    detection_result = pose_landmarker.detect(mp_image)
+
+    if not (hasattr(detection_result, 'pose_landmarks') and detection_result.pose_landmarks):
+        return None
+
+    pose = detection_result.pose_landmarks[0]
+    landmarks = {}
+    for i, lm in enumerate(pose):
+        landmarks[i] = {
+            "x": round(float(lm.x), 3),
+            "y": round(float(lm.y), 3),
+        }
+    return landmarks
+
+
+@app.post("/detectPoseLandmarksBatch")
+async def detect_pose_landmarks_batch(request: Request):
+    """
+    Firebase-compatible batch endpoint.
+    Accepts: { images: [{ key: string, imageUrl: string }] }
+    Returns: { results: { [key]: { [landmarkIndex]: { x, y } } | null } }
+    """
+    body = await request.json()
+    images = body.get("images", [])
+    results = {}
+
+    for item in images:
+        key = item.get("key")
+        image_url = item.get("imageUrl")
+        try:
+            req = urllib.request.Request(image_url, headers={"User-Agent": "PoseAPI/1.0"})
+            with urllib.request.urlopen(req) as resp:
+                image_data = resp.read()
+            landmarks = detect_from_image_bytes(image_data)
+            results[key] = landmarks
+        except Exception as e:
+            print(f"Error detecting pose for {key}: {e}")
+            results[key] = None
+
+    return {"results": results}
+
 
 if __name__ == "__main__":
     import uvicorn
