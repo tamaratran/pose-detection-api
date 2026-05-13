@@ -45,8 +45,7 @@ def init_pose_detector():
         url = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
         print(f"[Init] Downloading model from {url}...")
         try:
-            # Set timeout to 30 seconds for download
-            urllib.request.urlretrieve(url, model_path, timeout=30)
+            urllib.request.urlretrieve(url, model_path)
             print("[Init] Model downloaded successfully")
         except Exception as e:
             print(f"[Init] ERROR downloading model: {e}")
