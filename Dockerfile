@@ -20,4 +20,4 @@ COPY pose_detection_api.py .
 EXPOSE 8000
 
 # Run app
-CMD ["uvicorn", "pose_detection_api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD uvicorn pose_detection_api:app --host 0.0.0.0 --port ${PORT:-8000}
