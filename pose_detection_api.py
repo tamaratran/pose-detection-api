@@ -98,13 +98,26 @@ async def detect_pose(file: UploadFile = File(...)):
 
         # Extract landmarks
         landmarks = []
-        if detection_result.landmarks:
-            for landmark in detection_result.landmarks[0]:
+        # Debug: print the result structure
+        print(f"Detection result type: {type(detection_result)}")
+        print(f"Detection result attributes: {dir(detection_result)}")
+
+        # Try different attribute names for landmarks
+        landmark_list = None
+        if hasattr(detection_result, 'landmarks'):
+            landmark_list = detection_result.landmarks
+        elif hasattr(detection_result, 'pose_landmarks'):
+            landmark_list = detection_result.pose_landmarks
+        elif hasattr(detection_result, 'landmark'):
+            landmark_list = detection_result.landmark
+
+        if landmark_list:
+            for landmark in landmark_list[0] if isinstance(landmark_list[0], list) else landmark_list:
                 landmarks.append({
                     "x": float(landmark.x),
                     "y": float(landmark.y),
                     "z": float(landmark.z),
-                    "visibility": float(landmark.visibility) if landmark.visibility else 0.5
+                    "visibility": float(landmark.visibility) if hasattr(landmark, 'visibility') and landmark.visibility else 0.5
                 })
 
         return {
