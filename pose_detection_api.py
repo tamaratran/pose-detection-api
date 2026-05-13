@@ -43,10 +43,18 @@ def init_pose_detector():
     if not os.path.exists(model_path):
         import urllib.request
         url = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
-        print(f"Downloading model from {url}...")
-        urllib.request.urlretrieve(url, model_path)
-        print("Model downloaded successfully")
+        print(f"[Init] Downloading model from {url}...")
+        try:
+            # Set timeout to 30 seconds for download
+            urllib.request.urlretrieve(url, model_path, timeout=30)
+            print("[Init] Model downloaded successfully")
+        except Exception as e:
+            print(f"[Init] ERROR downloading model: {e}")
+            raise
+    else:
+        print(f"[Init] Model file exists: {model_path}")
 
+    print("[Init] Creating pose landmarker...")
     options = PoseLandmarkerOptions(
         base_options=BaseOptions(model_asset_path=model_path),
         running_mode=VisionRunningMode.IMAGE,
@@ -54,11 +62,20 @@ def init_pose_detector():
     )
 
     pose_landmarker = PoseLandmarker.create_from_options(options)
-    print("Pose detector initialized")
+    print("[Init] Pose detector initialized successfully")
 
 @app.on_event("startup")
 async def startup_event():
+    print("[Startup] Starting initialization...")
     init_pose_detector()
+    print("[Startup] Initialization complete")
+
+@app.get("/warmup")
+async def warmup():
+    """Warmup endpoint to ensure model is loaded"""
+    if pose_landmarker is None:
+        init_pose_detector()
+    return {"status": "ready", "model_loaded": pose_landmarker is not None}
 
 @app.get("/health")
 async def health():
