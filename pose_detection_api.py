@@ -129,8 +129,8 @@ async def detect_pose(file: UploadFile = File(...)):
 
         return {
             "success": True,
-            "landmarks": [landmarks],  # Return as array of arrays (like web version)
-            "count": len(landmarks)
+            "landmarks": landmarks if landmarks else [[]],  # Return as array of pose arrays
+            "count": len(landmarks[0]) if landmarks and len(landmarks) > 0 else 0
         }
 
     except Exception as e:
