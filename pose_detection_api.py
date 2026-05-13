@@ -32,6 +32,40 @@ VisionRunningMode = vision.RunningMode
 model_path = None
 pose_landmarker = None
 
+def extract_body_outline(landmarks):
+    """Extract body outline/silhouette from pose landmarks.
+
+    Returns a sequence of landmark indices that trace the body outline.
+    """
+    # Body outline connection sequence: traces around the body
+    outline_indices = [
+        # Head
+        0, 1, 2, 3, 4, 5, 6, 7,
+        # Right side (arm to hip)
+        10, 12, 14, 16, 18, 20, 22, 26, 28, 30, 32,
+        # Bottom right leg
+        32, 31, 29, 27,
+        # Left side (hip to arm)
+        23, 25, 24, 11, 13, 15, 17, 19, 21,
+        # Back to head
+        9, 10, 0
+    ]
+
+    # Filter to only visible landmarks and return points
+    outline = []
+    for idx in outline_indices:
+        if idx < len(landmarks):
+            lm = landmarks[idx]
+            if lm.get('visibility', 0.5) > 0.2:  # Only include visible points
+                outline.append({
+                    'x': lm['x'],
+                    'y': lm['y'],
+                    'z': lm['z'],
+                    'visibility': lm['visibility']
+                })
+
+    return outline
+
 def init_pose_detector():
     global pose_landmarker, model_path
 
@@ -115,6 +149,7 @@ async def detect_pose(file: UploadFile = File(...)):
 
         # Extract landmarks
         all_landmarks = []
+        all_outlines = []
 
         # In newer MediaPipe, pose landmarks are in pose_landmarks attribute
         if hasattr(detection_result, 'pose_landmarks') and detection_result.pose_landmarks:
@@ -129,10 +164,14 @@ async def detect_pose(file: UploadFile = File(...)):
                     })
                 if pose_landmarks:
                     all_landmarks.append(pose_landmarks)
+                    # Extract body outline from landmarks
+                    outline = extract_body_outline(pose_landmarks)
+                    all_outlines.append(outline)
 
         return {
             "success": True,
             "landmarks": all_landmarks,  # Direct array of pose arrays
+            "outline": all_outlines,  # Body silhouette outline
             "count": len(all_landmarks[0]) if all_landmarks else 0
         }
 
