@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 import cv2
 import numpy as np
+import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import json
@@ -81,11 +82,11 @@ async def detect_pose(file: UploadFile = File(...)):
         if image.mode != 'RGB':
             image = image.convert('RGB')
 
-        # Convert PIL image to OpenCV format
-        opencv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+        # Convert PIL image to numpy array
+        image_array = np.asarray(image)
 
         # Create MediaPipe Image
-        mp_image = vision.Image(image_format=vision.ImageFormat.SRGB, data=np.asarray(image))
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_array)
 
         # Detect pose
         detection_result = pose_landmarker.detect(mp_image)
