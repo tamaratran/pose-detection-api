@@ -96,41 +96,27 @@ async def detect_pose(file: UploadFile = File(...)):
         # Detect pose
         detection_result = pose_landmarker.detect(mp_image)
 
-        # Extract landmarks - debug available attributes
-        landmarks = []
+        # Extract landmarks
+        all_landmarks = []
 
-        # Get all non-private attributes
-        attrs = {k: type(getattr(detection_result, k)).__name__ for k in dir(detection_result) if not k.startswith('_')}
-        print(f"Detection result attributes: {attrs}")
-
-        # The result should have pose_landmarks, pose_world_landmarks, segmentation_masks, etc.
-        # Try to access the correct attribute
-        try:
-            # In newer MediaPipe, pose landmarks are in pose_landmarks attribute
-            if hasattr(detection_result, 'pose_landmarks') and detection_result.pose_landmarks:
-                for pose in detection_result.pose_landmarks:
-                    landmarks_for_pose = []
-                    for landmark in pose:
-                        landmarks_for_pose.append({
-                            "x": float(landmark.x),
-                            "y": float(landmark.y),
-                            "z": float(landmark.z),
-                            "visibility": float(landmark.visibility) if hasattr(landmark, 'visibility') else 0.5
-                        })
-                    if landmarks_for_pose:
-                        landmarks.append(landmarks_for_pose)
-        except Exception as e:
-            print(f"Error extracting landmarks: {e}")
-            return {
-                "success": False,
-                "error": f"Failed to extract landmarks: {str(e)}",
-                "debug_info": {"attributes": attrs}
-            }
+        # In newer MediaPipe, pose landmarks are in pose_landmarks attribute
+        if hasattr(detection_result, 'pose_landmarks') and detection_result.pose_landmarks:
+            for pose in detection_result.pose_landmarks:
+                pose_landmarks = []
+                for landmark in pose:
+                    pose_landmarks.append({
+                        "x": float(landmark.x),
+                        "y": float(landmark.y),
+                        "z": float(landmark.z),
+                        "visibility": float(landmark.visibility) if hasattr(landmark, 'visibility') else 0.5
+                    })
+                if pose_landmarks:
+                    all_landmarks.append(pose_landmarks)
 
         return {
             "success": True,
-            "landmarks": landmarks if landmarks else [[]],  # Return as array of pose arrays
-            "count": len(landmarks[0]) if landmarks and len(landmarks) > 0 else 0
+            "landmarks": all_landmarks,  # Direct array of pose arrays
+            "count": len(all_landmarks[0]) if all_landmarks else 0
         }
 
     except Exception as e:
